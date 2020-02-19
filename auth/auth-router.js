@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const bcrypt = require("bcryptjs");
+const restricted = require("./restricted-middleware.js");
 
 const Users = require("../users/users-model.js");
 
@@ -25,6 +26,7 @@ router.post("/login", (req, res) => {
 
     .then(user => {
       if (user && bcrypt.compareSync(password, user.password)) {
+        req.session.user = user;
         res.status(200).json({ message: `Welcome ${user.username}!` });
       } else {
         res.status(401).json({ message: "Invalid credentials" });
@@ -35,7 +37,7 @@ router.post("/login", (req, res) => {
     });
 });
 
-router.get("/users", (req, res) => {
+router.get("/users", restricted, (req, res) => {
   Users.find()
     .then(users => {
       res.status(200).json(users);
@@ -43,6 +45,20 @@ router.get("/users", (req, res) => {
     .catch(err => {
       res.status(500).json({ message: "Error accessing the database" });
     });
+});
+
+router.get("/logout", (req, res) => {
+  if (req.session) {
+    req.session.destroy(err => {
+      if (err) {
+        res.send("You had an error logging out");
+      } else {
+        res.send("Goodbye you are logged out");
+      }
+    });
+  } else {
+    res.end();
+  }
 });
 
 module.exports = router;
